@@ -73,11 +73,51 @@ def create_network(size, neighbours, frac_edge=0.1, frac_neg=0.2,
     
     return adj_mat, neg_nodes
 
+def get_avalanches(data):
+    aval_times = []
+    aval = 0
+    aval_sizes = []
+    proj_act = np.sum(data, 0)
+    for t,i in enumerate(proj_act):
+        if i > 0 and aval == 0:
+            aval = 1
+            start_t = t
+            aval_size = int(i)
+        if i > 0 and aval == 1:
+            aval_size += int(i)
+        
+        if i == 0 and aval == 1:
+            aval_times.append(t-start_t)
+            aval_sizes.append(aval_size)
+            aval = 0
+    return aval_times, aval_sizes
 
-adj_mat, neg_nodes = create_network(size=50, neighbours=2,
-                                    frac_neg=0.5, net_type='barabasi')
-all_act = izhikevich(adj_mat, neg_nodes, time=500)
 fig = plt.figure()
-im =  plt.imshow(all_act, animated=True)
+##im =  plt.imshow(all_act, animated=True)
 
+colors = ['r', 'b', 'g']
+for c,net_type in enumerate(['full', 'ws', 'barabasi']):
+    adj_mat, neg_nodes = create_network(size=50, neighbours=5,
+                                        frac_neg=0.9, net_type=net_type)
+    all_act = izhikevich(adj_mat, neg_nodes, time=5000)
+
+    aval_times, aval_sizes = get_avalanches(all_act)
+    y = np.bincount(np.array(aval_sizes))
+    ii = np.nonzero(y)[0]
+    avalprobs = y/len(aval_sizes)
+    plt.semilogy(ii, avalprobs[ii], colors[c] + 'o', label=net_type)
+
+
+plt.legend()
 plt.show()
+
+##bins = np.arange(1, 35, 1)
+##plt.hist(aval_sizes, bins=bins, alpha=0.5)
+##plt.title('Avalanche size distribution')
+##plt.xlabel('Size')
+##plt.ylabel('Count')
+##plt.show()
+
+##proj_act = np.sum(all_act, 0)
+##plt.plot(proj_act)
+##plt.show()
