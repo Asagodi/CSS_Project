@@ -1,8 +1,10 @@
+import tqdm
+
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 
-def create_network(num_nodes,num_edges=10,p=0.5,net_type="full"):
+def create_if_network(num_nodes,num_edges=10,p=0.5,net_type="full"):
     if net_type == 'random':
         graph = nx.gnp_random_graph(num_nodes,p)
     elif net_type == 'ws':
@@ -48,44 +50,55 @@ class simple_integrate_and_fire_model:
     def simulate(self,steps):
         avalanche_size = np.zeros(steps,dtype=int)
         
-        for t in range(steps):
-            # Drive step
-            i = np.random.randint(self.v.size)
-            self.v[i] += self.v_ext
-            
-            # Initialize check list
-            check_nodes = [i]
-            
-            # Relaxation step
-            s = 0
-            while len(check_nodes) > 0:
-                i = check_nodes.pop(0)
+        with tqdm.tqdm(total=steps) as pbar:
+            for t in range(steps):
+                # Drive step
+                i = np.random.randint(self.v.size)
+                self.v[i] += self.v_ext
+
+                # Initialize check list
+                check_nodes = [i]
+
+                # Relaxation step
+                s = 0
+                while len(check_nodes) > 0:
+                    i = check_nodes.pop(0)
+
+                    if self.v[i] > self.v_th:
+                        # number of neighbors of i
+                        n = np.sum(self.w[:,i].size)
+
+                        # neighbor indices
+                        j = self.w[:,i].nonzero()[0]
+
+                        # Spiking results in firing potential to neighbors
+                        self.v[j] += self.u*self.w[j,i].toarray().flatten() / n
+
+                        # Add neighbors to check list
+                        check_nodes += [elem for elem in list(j) if elem not in check_nodes]
+
+                        # Subtract threshold potential after spike
+                        self.v[i] -= self.v_th
+
+                        # Increase current avalanche size
+                        s += 1
+
+                avalanche_size[t] = s
                 
-                if self.v[i] > self.v_th:
-                    # number of neighbors of i
-                    n = np.sum(self.w[:,i].size)
-                    
-                    # neighbor indices
-                    j = self.w[:,i].nonzero()[0]
-                
-                    # Spiking results in firing potential to neighbors
-                    self.v[j] += self.u*self.w[j,i].toarray().flatten() / n
-                    
-                    # Add neighbors to check list
-                    check_nodes += [elem for elem in list(j) if elem not in check_nodes]
-                    
-                    # Subtract threshold potential after spike
-                    self.v[i] -= self.v_th
-                    
-                    # Increase current avalanche size
-                    s += 1
-                            
-            avalanche_size[t] = s
+                pbar.update()
             
         self.avalanche_size = np.concatenate((self.avalanche_size,avalanche_size))
         
+    def reset_avalanche_stats(self):
+        self.avalanche_size = np.array([],dtype=int)
+        
     def avalanche_size_pdf(self):
-        return np.bincount(self.avalanche_size) / self.avalanche_size.size
+        pdf = np.bincount(self.avalanche_size) / self.avalanche_size.size
+        
+        nonzeros = (pdf != 0)
+        indices = np.arange(nonzeros.size)[nonzeros]
+        
+        return indices,pdf[nonzeros]
 
 class LHG_integrate_and_fire_model:
     """
