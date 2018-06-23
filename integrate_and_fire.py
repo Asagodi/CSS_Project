@@ -113,7 +113,7 @@ class LHG_integrate_and_fire_model:
     - Implement inhibitory neurons - Levina claims: no relevant dynamics changes
     """
     
-    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,a=0.9,nu=10,tl=40,C=0.98):
+    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,a=0.5,nu=10,tl=40,C=0.98):
         """
         network: networkx network object
             Network used for the simulation
@@ -141,7 +141,6 @@ class LHG_integrate_and_fire_model:
         
         # Set parameters
         self.network = network
-        self.ts = ts
         self.v_ext = v_ext
         self.v_th = v_th
         self.u = u
@@ -157,6 +156,7 @@ class LHG_integrate_and_fire_model:
         self.link_idx = (self.w != 0)
         
         # Randomize synaptic connection strengths
+        self.w = self.w.astype(float)
         self.w[self.link_idx] = np.random.uniform(0,self.a/self.u,self.link_idx.size)
         
         # Network size
@@ -202,7 +202,7 @@ class LHG_integrate_and_fire_model:
                         self.v[j] += self.u*self.w[j,i].toarray().flatten() / n
 
                         # Decrease synaptic connection strength
-                        self.w[j,i] -= u*self.w[j,i]
+                        self.w[j,i] -= self.u*self.w[j,i]
                         
                         # Add neighbors to check list
                         check_nodes += [elem for elem in list(j) if elem not in check_nodes]
