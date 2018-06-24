@@ -28,9 +28,11 @@ class simple_integrate_and_fire_model:
     
     For the sake of simplicity the leak terms and dynamic synapses
     are left out due to the smaller time scales at which they are influential.
+    
+    The model does include the possibility of inhibitory neurons or synapses.
     """
     
-    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,J=4):
+    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,J=4,p_inh=0.0,inh_type="neuron"):
         # Set parameters
         self.network = network
         self.v_ext = v_ext
@@ -38,8 +40,39 @@ class simple_integrate_and_fire_model:
         self.u = u
         self.J = J
         
-        # Retrieve J_ij (weight matrix w) from network
-        self.w = self.J * nx.adjacency_matrix(network)
+        # Initialize weight matrix from network
+        self.w = nx.adjacency_matrix(network)
+        
+        # Link indices in weight matrix
+        self.link_idx = (self.w != 0)
+        
+        # Network size
+        self.N = self.w.shape[0]
+        
+        # Determine synapse types
+        self.synapse_types = self.w.astype(int)
+        
+        # Inhibition determined per synapse
+        if inh_type == "synapse":
+            n_inh = int(p_inh * self.synapse_types.size)
+
+            type_vals = np.ones(self.synapse_types.size)
+            if n_inh > 0:
+                inhibitory = np.random.choice(np.arange(self.synapse_types.size),size=n_inh,replace=False)
+                type_vals[inhibitory] = -1
+
+            self.synapse_types[self.link_idx] = type_vals
+        
+        # Inhibition determined per neuron
+        elif inh_type == "neuron":
+            n_inh = int(p_inh * self.N)
+            
+            if n_inh > 0:
+                inhibitory = np.random.choice(np.arange(self.N),size=n_inh,replace=False)
+                self.synapse_types[:,inhibitory] *= -1
+        
+        # Retrieve J_ij (given as w) from w
+        self.w = J * self.w
         
         # Initialize membrane potentials randomly
         self.v = np.random.uniform(0,self.v_th,self.w.shape[0])
@@ -72,7 +105,8 @@ class simple_integrate_and_fire_model:
                         j = self.w[:,i].nonzero()[0]
 
                         # Spiking results in firing potential to neighbors
-                        self.v[j] += self.u*self.w[j,i].toarray().flatten() / n
+                        self.v[j] += self.synapse_types[j,i].toarray().flatten() * \
+                                     self.u*self.w[j,i].toarray().flatten() / n
 
                         # Add neighbors to check list
                         check_nodes += [elem for elem in list(j) if elem not in check_nodes]
@@ -83,6 +117,9 @@ class simple_integrate_and_fire_model:
                         # Increase current avalanche size
                         s += 1
 
+                # Enforce minimum potential of zero
+                self.v[self.v < 0] = 0
+                        
                 avalanche_size[t] = s
                 
                 pbar.update()
@@ -269,7 +306,7 @@ class LHG_integrate_and_fire_model:
                         s += 1
 
                 # Enforce minimum potential of zero
-                self.v = np.maximum(np.zeros(self.v.size),self.v)
+                self.v[self.v < 0] = 0
                 
                 # Apply synaptic recovery after relaxation
                 self.w[self.link_idx] += J_rec
