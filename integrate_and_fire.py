@@ -103,17 +103,31 @@ class simple_integrate_and_fire_model:
 class LHG_integrate_and_fire_model:
     """
     Implements the leaky integrate and fire model described in 
-    https://arxiv.org/pdf/0712.1003.pdf.
+    https://ediss.uni-goettingen.de/bitstream/handle/11858/00-1735-0000-0006-B3B3-B/levina.pdf?sequence=1.
     
-    The algorithm allows for leak terms, dynamic synapses and inhibitory neurons.
+    The algorithm allows for leak terms, dynamic synapses and inhibition.
+    
+    The model operates on the assumption of separated time scales. Meaning that a neuronal
+    avalanche is allowed to complete long before the next external input is applied. This
+    means that the system is slowly driven and reacts quickly to any perturbation. The
+    discretization is done by setting the driving rate to 1 and setting the time step
+    size equal to the driving rate. The relaxation is assumed to be fast enough to 
+    happen instantly after the driving step and to finish at around the same time (t + dt ~ t). 
+    This is done due to the event driven nature of the system dynamics.
+    
+    Leakage and synapse recovery are both applied using the values at the start 
+    of the time step for the time integration.
+    
+    Inhibition is implemented by ignoring Dale's principle and taking a percentage
+    of the synapses to be inhibitory (instead of a percentage of neurons)
     
     TODO:
-    - Implement leak terms - Levina claims: no relevant dynamics changes
-    - Implement dynamic synapses - done, not tested
-    - Implement inhibitory neurons - Levina claims: no relevant dynamics changes
+    - Implement leak terms - done (Levina claims: no relevant dynamics changes)
+    - Implement dynamic synapses - done
+    - Implement inhibitory neurons - done (Levina claims: no relevant dynamics changes)
     """
     
-    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,a=0.5,nu=10,tl=40,C=0.98):
+    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,a=0.5,nu=10,tl=40,C=0.98,leakage=False,p_inh=0.0):
         """
         network: networkx network object
             Network used for the simulation
@@ -137,6 +151,11 @@ class LHG_integrate_and_fire_model:
                 Rate of leakage from a node
             C: float
                 Compensatory synaptic current
+            leakage: bool
+                Determine if leakage occurs
+                
+        p_inh: float
+            Percentage of inhibitory synapses
         """
         
         # Set parameters
@@ -148,12 +167,24 @@ class LHG_integrate_and_fire_model:
         self.nu = nu
         self.tl = tl
         self.C = C
+        self.leakage = leakage
         
         # Retrieve J_ij (weight matrix w) from network
         self.w = nx.adjacency_matrix(network)
         
         # Link indices in weight matrix
         self.link_idx = (self.w != 0)
+        
+        # Determine neuron types
+        self.neuron_types = self.w.astype(int)
+        n_inh = int(p_inh * self.neuron_types.size)
+        
+        type_vals = np.ones(self.neuron_types.size)
+        if n_inh > 0:
+            inhibitory = np.random.choice(np.arange(self.neuron_types.size),size=n_inh,replace=False)
+            type_vals[inhibitory] = -1
+            
+        self.neuron_types[self.link_idx] = type_vals
         
         # Randomize synaptic connection strengths
         self.w = self.w.astype(float)
@@ -172,10 +203,15 @@ class LHG_integrate_and_fire_model:
         self.avalanche_size = np.array([],dtype=int)
         
     def simulate(self,steps):
+        # Analytics to be collected
         avalanche_size = np.zeros(steps,dtype=int)
         
         with tqdm.tqdm(total=steps) as pbar:
             for t in range(steps):
+                # Apply leakage terms
+                if self.leakage:
+                    self.v += self.C - self.v / self.tl
+                
                 # Drive step
                 i = np.random.randint(self.v.size)
                 self.v[i] += self.v_ext
@@ -199,8 +235,10 @@ class LHG_integrate_and_fire_model:
                         j = self.w[:,i].nonzero()[0]
 
                         # Spiking results in firing potential to neighbors
-                        self.v[j] += self.u*self.w[j,i].toarray().flatten() / n
-
+                        # Inhibitory neurons subtract potential instead of adding
+                        self.v[j] += self.neuron_types[j,i].toarray().flatten() * \
+                                     self.u * self.w[j,i].toarray().flatten() / n
+                        
                         # Decrease synaptic connection strength
                         self.w[j,i] -= self.u*self.w[j,i]
                         
@@ -213,6 +251,9 @@ class LHG_integrate_and_fire_model:
                         # Increase current avalanche size
                         s += 1
 
+                # Enforce minimum potential of zero
+                self.v = np.maximum(np.zeros(self.v.size),self.v)
+                
                 # Apply synaptic recovery after relaxation
                 self.w[self.link_idx] += J_rec
                 
