@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def izhikevich(adj_mat, neg_nodes, time=10,
-               a_pars=(.02, .02), b_pars=(.2, .25):
+               a_pars=(.02, .02), b_pars=(.2, .25)):
         #set part of neurons to inhibitory
         nnodes = adj_mat.shape[0]
         nodes = range(nnodes)
