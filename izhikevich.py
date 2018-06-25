@@ -2,7 +2,8 @@ import networkx as nx
 import numpy as np
 import matplotlib.pyplot as plt
 
-def izhikevich(adj_mat, neg_nodes, time=10):
+def izhikevich(adj_mat, neg_nodes, time=10,
+               a_pars=(.02, .02), b_pars=(.2, .25):
         #set part of neurons to inhibitory
         nnodes = adj_mat.shape[0]
         nodes = range(nnodes)
@@ -14,10 +15,10 @@ def izhikevich(adj_mat, neg_nodes, time=10):
         ri = np.random.rand(neg_num,1)
         
         #set up parameters
-        a = 0.1*np.ones((nnodes,1))
-        a[neg_nodes] = 0.02+0.08*ri
+        a = a_pars[0]*np.ones((nnodes,1))
+        a[neg_nodes] = a_pars[1]+0.08*ri
         
-        b = 0.26*np.ones((nnodes,1))
+        b = b_par*np.ones((nnodes,1))
         b[neg_nodes] = 0.25-0.05*ri
         
         c =  -65+15*rall**2
@@ -87,37 +88,8 @@ def get_avalanches(data):
             aval_size += int(i)
         
         if i == 0 and aval == 1:
-            aval_times.append(t-start_t)
-            aval_sizes.append(aval_size)
+            aval_times.append(int(t-start_t))
+            aval_sizes.append(int(aval_size))
             aval = 0
     return aval_times, aval_sizes
 
-fig = plt.figure()
-##im =  plt.imshow(all_act, animated=True)
-
-colors = ['r', 'b', 'g']
-for c,net_type in enumerate(['full', 'ws', 'barabasi']):
-    adj_mat, neg_nodes = create_network(size=50, neighbours=5,
-                                        frac_neg=0.9, net_type=net_type)
-    all_act = izhikevich(adj_mat, neg_nodes, time=5000)
-
-    aval_times, aval_sizes = get_avalanches(all_act)
-    y = np.bincount(np.array(aval_sizes))
-    ii = np.nonzero(y)[0]
-    avalprobs = y/len(aval_sizes)
-    plt.semilogy(ii, avalprobs[ii], colors[c] + 'o', label=net_type)
-
-
-plt.legend()
-plt.show()
-
-##bins = np.arange(1, 35, 1)
-##plt.hist(aval_sizes, bins=bins, alpha=0.5)
-##plt.title('Avalanche size distribution')
-##plt.xlabel('Size')
-##plt.ylabel('Count')
-##plt.show()
-
-##proj_act = np.sum(all_act, 0)
-##plt.plot(proj_act)
-##plt.show()
