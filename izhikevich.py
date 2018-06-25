@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 
 def izhikevich(adj_mat, neg_nodes, time=10,
                a_pars=(.02, .02), b_pars=(.2, .25),
-               c_pars=(-65, 15), d_pars=(8, -6, 2)):
+               c_pars=(-65, 15), d_pars=(8, -6, 2),
+               randomness=(0.08, 0..05):
         #set part of neurons to inhibitory
         nnodes = adj_mat.shape[0]
         nodes = range(nnodes)
@@ -17,10 +18,10 @@ def izhikevich(adj_mat, neg_nodes, time=10,
         
         #set up parameters
         a = a_pars[0]*np.ones((nnodes,1))
-        a[neg_nodes] = a_pars[1]+0.08*ri
+        a[neg_nodes] = a_pars[1]+randomness[0]*ri
         
         b = b_pars[0]*np.ones((nnodes,1))
-        b[neg_nodes] = b_pars[1]-0.05*ri
+        b[neg_nodes] = b_pars[1]-randomness[1]*ri
         
         c =  c_pars[0]+c_pars[1]*rall**2
         c[neg_nodes] = c_pars[0]*np.ones((neg_num,1))
