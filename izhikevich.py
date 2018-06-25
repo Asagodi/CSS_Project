@@ -18,7 +18,7 @@ def izhikevich(adj_mat, neg_nodes, time=10,
         a = a_pars[0]*np.ones((nnodes,1))
         a[neg_nodes] = a_pars[1]+0.08*ri
         
-        b = b_par*np.ones((nnodes,1))
+        b = b_pars*np.ones((nnodes,1))
         b[neg_nodes] = 0.25-0.05*ri
         
         c =  -65+15*rall**2
