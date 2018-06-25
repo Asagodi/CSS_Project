@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def izhikevich(adj_mat, neg_nodes, time=10,
-               a_pars=(.02, .02), b_pars=(.2, .25)):
+               a_pars=(.02, .02), b_pars=(.2, .25),
+               c_pars=(-65, 15), d_pars=(8, -6, 2)):
         #set part of neurons to inhibitory
         nnodes = adj_mat.shape[0]
         nodes = range(nnodes)
@@ -18,18 +19,18 @@ def izhikevich(adj_mat, neg_nodes, time=10,
         a = a_pars[0]*np.ones((nnodes,1))
         a[neg_nodes] = a_pars[1]+0.08*ri
         
-        b = b_pars*np.ones((nnodes,1))
-        b[neg_nodes] = 0.25-0.05*ri
+        b = b_pars[0]*np.ones((nnodes,1))
+        b[neg_nodes] = b_pars[1]-0.05*ri
         
-        c =  -65+15*rall**2
-        c[neg_nodes] = -65*np.ones((neg_num,1))
+        c =  c_pars[0]+c_pars[1]*rall**2
+        c[neg_nodes] = c_pars[0]*np.ones((neg_num,1))
         
-        d = 8-6*rall**2
-        d[neg_nodes] = 2*np.ones((neg_num,1))
+        d = d_pars[0]+d_pars[1]*rall**2
+        d[neg_nodes] = d_pars[2]*np.ones((neg_num,1))
         
 ##        adj_mat = adj_mat * np.random.rand(nnodes, nnodes)
         
-        v = -65*np.ones((nnodes,1)) # Initial values of v
+        v = c_pars[0]*np.ones((nnodes,1)) # Initial values of v
         u = b*v                  
         all_act = np.zeros((nnodes, time))                    # spike timing
         
