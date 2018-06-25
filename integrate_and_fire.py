@@ -4,13 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 
-def create_if_network(num_nodes,num_edges=10,p=0.5,net_type="full"):
+from aging_graph import aging_barabasi_albert_graph
+
+def create_if_network(num_nodes,num_edges=10,p=0.5,alpha=1,net_type="full"):
     if net_type == 'random':
         graph = nx.gnp_random_graph(num_nodes,p)
     elif net_type == 'ws':
         graph = nx.watts_strogatz_graph(num_nodes, num_edges, p)
     elif net_type == 'ba':
         graph = nx.barabasi_albert_graph(num_nodes, num_edges)
+    elif net_type == 'aging':
+        graph = aging_barabasi_albert_graph(num_nodes,alpha,m=num_edges,m0=num_edges)
     elif net_type == 'full':
         graph = nx.complete_graph(num_nodes)
         
