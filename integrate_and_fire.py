@@ -36,7 +36,8 @@ class simple_integrate_and_fire_model:
     The model does include the possibility of inhibitory neurons or synapses.
     """
     
-    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,J=4,p_inh=0.0,inh_type="neuron"):
+    def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,J=4,p_inh=0.0,
+                 inh_type="neuron", w=None):
         # Set parameters
         self.network = network
         self.v_ext = v_ext
@@ -45,7 +46,10 @@ class simple_integrate_and_fire_model:
         self.J = J
         
         # Initialize weight matrix from network
-        self.w = nx.adjacency_matrix(network)
+        if w is None:
+            self.w = nx.adjacency_matrix(network)
+        else:
+            self.w = nx.adjacency_matrix(nx.from_numpy_matrix(w))
         
         # Link indices in weight matrix
         self.link_idx = (self.w != 0)
@@ -171,7 +175,8 @@ class LHG_integrate_and_fire_model:
     """
     
     def __init__(self,network,v_ext=0.025,v_th=1,u=0.2,a=0.5,
-                 nu=10,tl=40,C=0.98,leakage=False,p_inh=0.0,inh_type="neuron"):
+                 nu=10,tl=40,C=0.98,leakage=False,p_inh=0.0,inh_type="neuron",
+                 A=None):
         """
         network: networkx network object
             Network used for the simulation
@@ -217,7 +222,11 @@ class LHG_integrate_and_fire_model:
         self.leakage = leakage
         
         # Retrieve J_ij (weight matrix w) from network
-        self.w = nx.adjacency_matrix(network)
+        if A is None:
+            self.w = nx.adjacency_matrix(network)
+        else:
+            self.w = nx.adjacency_matrix(nx.from_numpy_matrix(A))
+
         
         # Link indices in weight matrix
         self.link_idx = (self.w != 0)
@@ -248,9 +257,11 @@ class LHG_integrate_and_fire_model:
                 self.synapse_types[:,inhibitory] *= -1
         
         # Randomize synaptic connection strengths
-        self.w = self.w.astype(float)
-        self.w[self.link_idx] = np.random.uniform(0,self.a/self.u,self.link_idx.size)
-        
+        if A is None:
+            self.w = self.w.astype(float)
+            self.w[self.link_idx] = np.random.uniform(0,self.a/self.u,self.link_idx.size)
+
+                
         # Synaptic recovery time-scale
         self.tj = self.nu * self.N
         
