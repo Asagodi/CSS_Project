@@ -56,7 +56,7 @@ def izhikevich(adj_mat, neg_nodes, time=10,
 
         return all_act
 
-def create_network(size, neighbours, frac_edge=0.1, frac_neg=0.2,
+def create_network(size, neighbours, frac_edge=0.1, frac_neg=0.,
                    net_type='random'):
     if net_type == 'random':
         graph = nx.gnm_random_graph(size, neighbours)
